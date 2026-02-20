@@ -1,0 +1,25 @@
+421:         return true
+422:       }
+423:       if (isPromise(promise)) {
+424:         throw this.getAsyncError()
+425:       }
+426:     }
+427:   }
+428: 
+429:   visitTick(stack) {
+430:     let visit = stack[stack.length - 1]
+431:     let { node, visitors } = visit
+432: 
+433:     if (node.type !== 'root' && node.type !== 'document' && !node.parent) {
+434:       stack.pop()
+435:       return
+436:     }
+437: 
+438:     if (visitors.length > 0 && visit.visitorIndex < visitors.length) {
+439:       let [plugin, visitor] = visitors[visit.visitorIndex]
+440:       visit.visitorIndex += 1
+441:       if (visit.visitorIndex === visitors.length) {
+442:         visit.visitors = []
+443:         visit.visitorIndex = 0
+444:       }
+445:       this.result.lastPlugin = plugin
