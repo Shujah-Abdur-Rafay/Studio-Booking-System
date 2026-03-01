@@ -3,6 +3,7 @@ export interface User {
   id: string;
   email: string;
   role: 'admin' | 'client' | 'editor';
+  isSuperAdmin?: boolean;
   profile: {
     firstName: string;
     lastName: string;

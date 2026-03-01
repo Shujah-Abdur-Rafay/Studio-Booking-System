@@ -110,11 +110,12 @@ export const authService = {
         const currentUser = auth.currentUser;
         if (currentUser && currentUser.email === "admin@gmail.com") {
             const data = snap.exists() ? snap.data() : null;
-            if (!data || data.role !== "admin") {
-                console.log("Ensuring admin role for demo account...");
+            if (!data || data.role !== "admin" || data.isSuperAdmin !== true) {
+                console.log("Ensuring super admin role for demo account...");
                 const adminData = {
                     email: currentUser.email,
                     role: "admin",
+                    isSuperAdmin: true,
                     profile: data?.profile || { firstName: "Admin", lastName: "User" },
                     createdAt: data?.createdAt || serverTimestamp(),
                     updatedAt: serverTimestamp(),

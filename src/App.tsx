@@ -46,6 +46,7 @@ import { AdminDashboard } from '@/components/AdminDashboard';
 import { HeroVideo } from '@/components/HeroVideo';
 import { PaymentForm } from '@/components/PaymentForm';
 import { ClientPortal } from '@/components/ClientPortal';
+import { SettingsPage } from '@/components/SettingsPage';
 import './App.css';
 import type {
   Service,
@@ -59,7 +60,7 @@ import type {
 } from '@/types';
 
 // View types for navigation
-type View = 'home' | 'portfolio' | 'services' | 'booking' | 'about' | 'contact' | 'portal' | 'admin' | 'login';
+type View = 'home' | 'portfolio' | 'services' | 'booking' | 'about' | 'contact' | 'portal' | 'admin' | 'login' | 'settings';
 
 // Toast Component
 function Toast() {
@@ -160,6 +161,15 @@ function Navigation({ currentView, setView }: { currentView: View; setView: (v: 
                   </Button>
                 )}
                 <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setView('settings')}
+                  className="text-muted-foreground hover:text-[#cbb26a] hover:bg-[#cbb26a]/20"
+                >
+                  <User className="w-4 h-4 mr-2" />
+                  Settings
+                </Button>
+                <Button
                   size="sm"
                   onClick={() => setView('booking')}
                   className="btn-gold text-white font-medium tracking-wide"
@@ -169,7 +179,10 @@ function Navigation({ currentView, setView }: { currentView: View; setView: (v: 
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={logout}
+                  onClick={() => {
+                    logout();
+                    setView('home');
+                  }}
                   className="text-muted-foreground hover:text-red-500"
                 >
                   <LogOut className="w-4 h-4" />
@@ -198,7 +211,7 @@ function Navigation({ currentView, setView }: { currentView: View; setView: (v: 
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-[#0a0a0a]"
+            className="md:hidden p-2 text-white"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -250,7 +263,17 @@ function Navigation({ currentView, setView }: { currentView: View; setView: (v: 
                 )}
                 <button
                   onClick={() => {
+                    setView('settings');
+                    setMobileMenuOpen(false);
+                  }}
+                  className="block w-full text-left py-2 text-sm font-medium text-white/80 hover:text-white"
+                >
+                  Account Settings
+                </button>
+                <button
+                  onClick={() => {
                     logout();
+                    setView('home');
                     setMobileMenuOpen(false);
                   }}
                   className="block w-full text-left py-2 text-sm font-medium text-red-600"
@@ -973,11 +996,21 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
     return slots;
   };
 
-  // Calculate total price
+  // Calculate raw subtotal (before any discount)
   const calculateTotal = () => {
     if (!selectedService) return 0;
     const addonsTotal = selectedAddOns.reduce((sum: number, a: AddOn) => sum + a.price, 0);
     return selectedService.basePrice + addonsTotal;
+  };
+
+  // Calculate the actual amount due after applying the 5% full-payment discount
+  const FULL_PAYMENT_DISCOUNT = 0.05;
+  const calculateFinalAmount = () => {
+    const subtotal = calculateTotal();
+    if (paymentOption === 'full') {
+      return subtotal * (1 - FULL_PAYMENT_DISCOUNT);
+    }
+    return subtotal;
   };
 
   const handleComplete = async () => {
@@ -986,8 +1019,13 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
     setIsProcessing(true);
     try {
       // Create booking record
-      const total = calculateTotal();
-      const depositAmount = (total * (selectedService.depositRequired || 0)) / 100;
+      const subtotal = calculateTotal();
+      const total = paymentOption === 'full'
+        ? subtotal * (1 - FULL_PAYMENT_DISCOUNT)
+        : subtotal;
+      const depositAmount = paymentOption === 'deposit'
+        ? (subtotal * (selectedService.depositRequired || 0)) / 100
+        : 0;
 
       await bookingsService.create({
         clientId: user?.id || 'guest',
@@ -1094,6 +1132,16 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
         {/* Step 1: Service Selection */}
         {step === 1 && (
           <div className="space-y-6">
+            <div className="flex items-center">
+              <button
+                onClick={() => setView('services')}
+                className="flex items-center text-sm font-medium text-muted-foreground hover:text-[#cbb26a] transition-colors"
+                style={{ fontFamily: "'Inter', sans-serif" }}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Back to Packages
+              </button>
+            </div>
             <h2 className="text-xl font-semibold">Select a Package</h2>
 
             {/* Show pre-selected sqft tier info if coming from packages page */}
@@ -1400,9 +1448,15 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
                   </div>
                 ))}
                 <Separator className="my-2" />
+                {paymentOption === 'full' && (
+                  <div className="flex justify-between text-green-600 text-sm">
+                    <span>5% Full Payment Discount</span>
+                    <span>-{formatPrice(calculateTotal() * FULL_PAYMENT_DISCOUNT)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total</span>
-                  <span className="text-[#8f5e25]">{formatPrice(calculateTotal())}</span>
+                  <span className="text-[#8f5e25]">{formatPrice(calculateFinalAmount())}</span>
                 </div>
               </div>
 
@@ -1437,8 +1491,8 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
                     }`}
                 >
                   <p className="font-medium">Pay Full Amount</p>
-                  <p className="text-2xl font-bold text-[#8f5e25]">{formatPrice(calculateTotal())}</p>
-                  <p className="text-sm text-muted-foreground">Save 5% with full payment</p>
+                  <p className="text-2xl font-bold text-[#8f5e25]">{formatPrice(calculateTotal() * (1 - FULL_PAYMENT_DISCOUNT))}</p>
+                  <p className="text-sm text-green-600 font-medium">Save {formatPrice(calculateTotal() * FULL_PAYMENT_DISCOUNT)} (5% off)</p>
                 </button>
               </div>
             </div>
@@ -1520,7 +1574,7 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
                 <PaymentForm
                   amount={paymentOption === 'deposit'
                     ? calculateTotal() * (selectedService.depositRequired || 0) / 100
-                    : calculateTotal()
+                    : calculateFinalAmount()
                   }
                   email={formData.email}
                   onSuccess={handleComplete}
@@ -2124,6 +2178,7 @@ function App() {
         }
       } else {
         setUser(null);
+        setCurrentView(prev => ['settings', 'portal', 'admin'].includes(prev) ? 'home' : prev);
       }
     });
     return () => unsubscribe();
@@ -2171,6 +2226,7 @@ function App() {
         {currentView === 'login' && <LoginSection setView={setCurrentView} />}
         {currentView === 'portal' && <ClientPortal setView={setCurrentView} />}
         {currentView === 'admin' && <AdminDashboard setView={setCurrentView} />}
+        {currentView === 'settings' && <SettingsPage />}
       </main>
 
       {currentView !== 'portal' && currentView !== 'admin' && currentView !== 'login' && (

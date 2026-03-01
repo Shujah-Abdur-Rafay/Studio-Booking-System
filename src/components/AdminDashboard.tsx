@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import {
-    Calendar, Shield, Plus, Database, Edit, BarChart3, Users,
+    Calendar, Shield, Plus, Database, Edit, BarChart3, Users, User,
     Star, Trash2, Check,
     X, Video, Image as ImageIcon, Package, Mail, MailOpen,
     Play, TrendingUp, AlertCircle, Loader2, CreditCard
@@ -22,6 +22,8 @@ import type {
 } from '@/types';
 import { ProjectsTab, InvoicesTab } from '@/components/AdminProjectTabs';
 import { TransactionsTab } from '@/components/AdminTransactionsTab';
+import { SettingsPage } from '@/components/SettingsPage';
+import { AdminManagementTab } from '@/components/AdminManagementTab';
 
 type View = 'home' | 'portfolio' | 'services' | 'booking' | 'about' | 'contact' | 'portal' | 'admin' | 'login';
 
@@ -128,6 +130,12 @@ export function AdminDashboard({ setView }: { setView: (v: View) => void }) {
                                 </span>
                             )}
                         </TabsTrigger>
+                        <TabsTrigger value="admins" className="flex items-center gap-2 data-[state=active]:bg-[#cbb26a] data-[state=active]:text-white">
+                            <Shield className="w-4 h-4" />Admins
+                        </TabsTrigger>
+                        <TabsTrigger value="settings" className="flex items-center gap-2 data-[state=active]:bg-[#cbb26a] data-[state=active]:text-white">
+                            <User className="w-4 h-4" />Settings
+                        </TabsTrigger>
                     </TabsList>
 
                     {/* ═══════ OVERVIEW TAB ═══════ */}
@@ -210,6 +218,16 @@ export function AdminDashboard({ setView }: { setView: (v: View) => void }) {
 
                     {/* ═══════ MESSAGES TAB ═══════ */}
                     <TabsContent value="messages"><MessagesTab messages={contactMessages} onMarkRead={adminMarkMessageRead} onMarkUnread={adminMarkMessageUnread} onDelete={adminDeleteMessage} /></TabsContent>
+
+                    {/* ═══════ ADMIN MANAGEMENT TAB ═══════ */}
+                    <TabsContent value="admins">
+                        <AdminManagementTab />
+                    </TabsContent>
+
+                    {/* ═══════ SETTINGS TAB ═══════ */}
+                    <TabsContent value="settings">
+                        <SettingsPage />
+                    </TabsContent>
 
                     {/* ═══════ BOOKINGS TAB ═══════ */}
                     <TabsContent value="bookings">

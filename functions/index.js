@@ -116,7 +116,7 @@ exports.createPaymentIntent = onCall({
 });
 
 exports.handleStripeWebhook = onRequest({
-    cors: true, // Stripe sends POST, CORS usually not needed for webhooks but good for testing tools
+    cors: true,
     serviceAccount: SERVICE_ACCOUNT,
     region: "us-central1",
 }, async (req, res) => {
@@ -136,12 +136,9 @@ exports.handleStripeWebhook = onRequest({
     let event;
 
     try {
-        // Verify signature
         if (endpointSecret) {
             event = stripe.webhooks.constructEvent(req.rawBody, sig, endpointSecret);
         } else {
-            // Fallback for testing without signature verification if secret is missing (NOT RECOMMENDED FOR PROD)
-            // In production, force signature verification
             console.warn("No Webhook Secret found. Skipping signature verification (Test Mode only).");
             event = req.body;
         }
@@ -151,7 +148,6 @@ exports.handleStripeWebhook = onRequest({
         return;
     }
 
-    // Idempotency: Check if we've already processed this event
     const eventRef = db.collection('payments').doc(event.id);
     const eventSnap = await eventRef.get();
     if (eventSnap.exists) {
@@ -167,7 +163,6 @@ exports.handleStripeWebhook = onRequest({
 
             console.log(`Payment succeeded for Invoice: ${invoiceId}, User: ${userId}`);
 
-            // 1. Record Transaction
             await eventRef.set({
                 eventId: event.id,
                 type: event.type,
@@ -182,9 +177,7 @@ exports.handleStripeWebhook = onRequest({
                 processedAt: admin.firestore.FieldValue.serverTimestamp()
             });
 
-            // 2. Update Invoice Status
             if (invoiceId && invoiceId !== 'unknown') {
-                // Fetch the invoice
                 const invoiceRef = db.collection('invoices').doc(invoiceId);
                 const invoiceSnap = await invoiceRef.get();
 
@@ -217,5 +210,147 @@ exports.handleStripeWebhook = onRequest({
     } catch (err) {
         console.error("Error processing webhook:", err);
         res.status(500).send("Internal Server Error");
+    }
+});
+
+// ─── UPDATE USER PROFILE ─────────────────────────────────────────────────────
+// Allows a user to update their own name, email, and/or password.
+// Uses the Admin SDK so email and password changes bypass client-side re-auth issues.
+exports.updateUserProfile = onCall({
+    cors: true,
+    serviceAccount: SERVICE_ACCOUNT,
+    region: "us-central1",
+    maxInstances: 10,
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in.');
+    }
+
+    const uid = request.auth.uid;
+    const { firstName, lastName, phone, newEmail, newPassword } = request.data;
+
+    const authUpdates = {};
+    const firestoreUpdates = {
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    // Update name fields in Firestore
+    if (firstName !== undefined) firestoreUpdates['profile.firstName'] = firstName;
+    if (lastName !== undefined) firestoreUpdates['profile.lastName'] = lastName;
+    if (phone !== undefined) firestoreUpdates['profile.phone'] = phone;
+
+    // Update email (Auth + Firestore)
+    if (newEmail && newEmail.trim()) {
+        authUpdates.email = newEmail.trim();
+        firestoreUpdates['email'] = newEmail.trim();
+    }
+
+    // Update password (Auth only)
+    if (newPassword && newPassword.length >= 6) {
+        authUpdates.password = newPassword;
+    }
+
+    try {
+        // Apply Auth updates if any
+        if (Object.keys(authUpdates).length > 0) {
+            await admin.auth().updateUser(uid, authUpdates);
+        }
+
+        // Apply Firestore updates
+        await db.collection('users').doc(uid).set(firestoreUpdates, { merge: true });
+
+        return { success: true, message: 'Profile updated successfully.' };
+    } catch (error) {
+        console.error('updateUserProfile error:', error);
+        throw new HttpsError('internal', error.message || 'Failed to update profile.');
+    }
+});
+
+// ─── MANAGE ADMIN USERS ───────────────────────────────────────────────────────
+// Only callable by users with isSuperAdmin: true in Firestore.
+// Actions: 'grant' (make user an admin), 'revoke' (demote admin to client),
+//          'list' (list all admin users).
+exports.manageAdmin = onCall({
+    cors: true,
+    serviceAccount: SERVICE_ACCOUNT,
+    region: "us-central1",
+    maxInstances: 10,
+}, async (request) => {
+    if (!request.auth) {
+        throw new HttpsError('unauthenticated', 'You must be logged in.');
+    }
+
+    const callerUid = request.auth.uid;
+
+    // Verify caller is a super admin
+    const callerSnap = await db.collection('users').doc(callerUid).get();
+    if (!callerSnap.exists || !callerSnap.data().isSuperAdmin) {
+        throw new HttpsError('permission-denied', 'Only super admins can manage admin users.');
+    }
+
+    const { action, targetEmail, targetUid } = request.data;
+
+    try {
+        if (action === 'list') {
+            // Return all users with role === 'admin'
+            const snap = await db.collection('users').where('role', '==', 'admin').get();
+            const admins = snap.docs.map(d => ({
+                id: d.id,
+                email: d.data().email,
+                firstName: d.data().profile?.firstName || '',
+                lastName: d.data().profile?.lastName || '',
+                isSuperAdmin: d.data().isSuperAdmin || false,
+                createdAt: d.data().createdAt?.toDate?.() || null,
+            }));
+            return { success: true, admins };
+        }
+
+        if (action === 'grant') {
+            if (!targetEmail) throw new HttpsError('invalid-argument', 'targetEmail is required.');
+
+            // Find user by email
+            let authUser;
+            try {
+                authUser = await admin.auth().getUserByEmail(targetEmail);
+            } catch (e) {
+                throw new HttpsError('not-found', `No user found with email: ${targetEmail}`);
+            }
+
+            // Update Firestore role
+            await db.collection('users').doc(authUser.uid).set({
+                role: 'admin',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            return { success: true, message: `${targetEmail} is now an admin.` };
+        }
+
+        if (action === 'revoke') {
+            if (!targetUid) throw new HttpsError('invalid-argument', 'targetUid is required.');
+
+            // Prevent revoking another super admin
+            const targetSnap = await db.collection('users').doc(targetUid).get();
+            if (targetSnap.exists && targetSnap.data().isSuperAdmin) {
+                throw new HttpsError('permission-denied', 'Cannot revoke a super admin.');
+            }
+
+            // Prevent self-revocation
+            if (targetUid === callerUid) {
+                throw new HttpsError('permission-denied', 'You cannot revoke your own admin access.');
+            }
+
+            await db.collection('users').doc(targetUid).set({
+                role: 'client',
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            return { success: true, message: 'Admin access revoked.' };
+        }
+
+        throw new HttpsError('invalid-argument', `Unknown action: ${action}`);
+    } catch (error) {
+        if (error instanceof HttpsError) throw error;
+        console.error('manageAdmin error:', error);
+        throw new HttpsError('internal', error.message || 'Operation failed.');
     }
 });
