@@ -26,6 +26,11 @@ export function ClientPortal({ setView }: { setView: (v: View) => void }) {
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
     const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
 
+    // Scroll to top on tab change
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [activeTab]);
+
     useEffect(() => {
         if (user) {
             loadPortalData(user.id);
@@ -77,7 +82,7 @@ export function ClientPortal({ setView }: { setView: (v: View) => void }) {
                         <h1 className="text-3xl font-bold">Client Portal</h1>
                         <p className="text-muted-foreground">Welcome back, {user.profile?.firstName || 'Client'}</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button variant="outline" onClick={() => loadPortalData(user.id)}>
                             <RefreshCw className="w-4 h-4 mr-2" />
                             Refresh
@@ -161,13 +166,13 @@ export function ClientPortal({ setView }: { setView: (v: View) => void }) {
                                             <p className="text-sm font-medium mb-2">Deliverables</p>
                                             <div className="space-y-2">
                                                 {project.deliverables.map((del: any) => (
-                                                    <div key={del.id} className="flex items-center justify-between p-2 bg-card border border-border rounded-lg">
+                                                    <div key={del.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2 bg-card border border-border rounded-lg gap-2">
                                                         <div className="flex items-center gap-2">
                                                             {del.type === 'photo' && <ImageIcon className="w-4 h-4 text-[#8f5e25]" />}
                                                             {del.type === 'video' && <Video className="w-4 h-4 text-[#8f5e25]" />}
                                                             <span className="text-sm">{del.name}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex flex-wrap items-center gap-2">
                                                             <Badge variant={del.status === 'ready' ? 'default' : 'secondary'} className="text-xs">{del.status}</Badge>
                                                             {del.status === 'ready' && del.url && (
                                                                 <Button size="sm" variant="ghost" onClick={() => handleDownload(del.url)}>
@@ -242,7 +247,7 @@ export function ClientPortal({ setView }: { setView: (v: View) => void }) {
                         {projects.flatMap((p: Project) => p.deliverables || []).filter((d: any) => d.status === 'ready').map((deliverable: any) => (
                             <Card key={deliverable.id}>
                                 <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                                         <div className="flex items-center gap-4">
                                             {deliverable.thumbnail ? (
                                                 <img src={deliverable.thumbnail} alt={deliverable.name} className="w-16 h-16 object-cover rounded-lg" />

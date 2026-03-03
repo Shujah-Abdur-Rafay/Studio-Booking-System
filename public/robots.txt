@@ -1,0 +1,14 @@
+# robots.txt — Real Luxe Studios
+# https://realluxestudios.com/
+
+User-agent: *
+Allow: /
+
+# Block admin and portal routes from indexing
+Disallow: /admin
+Disallow: /portal
+Disallow: /settings
+Disallow: /login
+
+# Sitemap location
+Sitemap: https://realluxestudios.com/sitemap.xml

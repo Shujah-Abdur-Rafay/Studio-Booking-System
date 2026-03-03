@@ -22,7 +22,6 @@ import type {
 } from '@/types';
 import { ProjectsTab, InvoicesTab } from '@/components/AdminProjectTabs';
 import { TransactionsTab } from '@/components/AdminTransactionsTab';
-import { SettingsPage } from '@/components/SettingsPage';
 import { AdminManagementTab } from '@/components/AdminManagementTab';
 
 type View = 'home' | 'portfolio' | 'services' | 'booking' | 'about' | 'contact' | 'portal' | 'admin' | 'login';
@@ -61,6 +60,11 @@ export function AdminDashboard({ setView }: { setView: (v: View) => void }) {
     } = useAdmin();
 
     const [activeTab, setActiveTab] = useState('overview');
+
+    // Scroll to top on tab change
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [activeTab]);
 
     useEffect(() => {
         if (user?.role === 'admin') {
@@ -102,7 +106,7 @@ export function AdminDashboard({ setView }: { setView: (v: View) => void }) {
                         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
                         <p className="text-muted-foreground">Manage your business</p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
 
                         <Button variant="outline" onClick={() => loadAdminData()}>
                             <TrendingUp className="w-4 h-4 mr-2" />Refresh
@@ -132,9 +136,6 @@ export function AdminDashboard({ setView }: { setView: (v: View) => void }) {
                         </TabsTrigger>
                         <TabsTrigger value="admins" className="flex items-center gap-2 data-[state=active]:bg-[#cbb26a] data-[state=active]:text-white">
                             <Shield className="w-4 h-4" />Admins
-                        </TabsTrigger>
-                        <TabsTrigger value="settings" className="flex items-center gap-2 data-[state=active]:bg-[#cbb26a] data-[state=active]:text-white">
-                            <User className="w-4 h-4" />Settings
                         </TabsTrigger>
                     </TabsList>
 
@@ -223,12 +224,6 @@ export function AdminDashboard({ setView }: { setView: (v: View) => void }) {
                     <TabsContent value="admins">
                         <AdminManagementTab />
                     </TabsContent>
-
-                    {/* ═══════ SETTINGS TAB ═══════ */}
-                    <TabsContent value="settings">
-                        <SettingsPage />
-                    </TabsContent>
-
                     {/* ═══════ BOOKINGS TAB ═══════ */}
                     <TabsContent value="bookings">
                         <Card>
@@ -335,7 +330,7 @@ function CarouselTab({ videos, onCreate, onUpdate, onDelete }: {
             <CardContent>
                 <div className="space-y-3">
                     {videos.map(v => (
-                        <div key={v.id} className="flex items-center justify-between p-4 border border-border rounded-lg hover:shadow-sm transition-shadow">
+                        <div key={v.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border rounded-lg hover:shadow-sm transition-shadow gap-4">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 bg-[#cbb26a]/20 rounded-lg flex items-center justify-center"><Play className="w-6 h-6 text-[#8f5e25]" /></div>
                                 <div>
@@ -343,7 +338,7 @@ function CarouselTab({ videos, onCreate, onUpdate, onDelete }: {
                                     <p className="text-xs text-muted-foreground truncate max-w-[300px]">{v.url}</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2">
                                 <Badge variant={v.isActive ? 'default' : 'secondary'}>{v.isActive ? 'Active' : 'Inactive'}</Badge>
                                 <span className="text-xs text-muted-foreground">Order: {v.sortOrder}</span>
                                 <Button variant="ghost" size="icon" onClick={() => openEdit(v)}><Edit className="w-4 h-4" /></Button>
@@ -482,9 +477,9 @@ function PortfolioTab({ items, categories, onCreate, onUpdate, onDelete, onSetCa
     return (
         <Card>
             <CardHeader>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                     <CardTitle>Portfolio ({items.length} items)</CardTitle>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         <Button
                             variant={activeTab === 'items' ? 'default' : 'outline'}
                             size="sm"
@@ -574,7 +569,7 @@ function PortfolioTab({ items, categories, onCreate, onUpdate, onDelete, onSetCa
                                 return (
                                     <div
                                         key={cat}
-                                        className="flex items-center justify-between p-3 border border-border rounded-lg hover:shadow-sm transition-shadow"
+                                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 border border-border rounded-lg hover:shadow-sm transition-shadow gap-4"
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${hasMedia ? 'bg-green-500' : 'bg-gray-300'}`} />
@@ -583,7 +578,7 @@ function PortfolioTab({ items, categories, onCreate, onUpdate, onDelete, onSetCa
                                                 <p className="text-xs text-muted-foreground font-mono">{cat}</p>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-3">
+                                        <div className="flex flex-wrap items-center gap-3">
                                             <Badge variant={hasMedia ? 'default' : 'secondary'} className="text-xs">
                                                 {count} item{count !== 1 ? 's' : ''}
                                             </Badge>
@@ -739,11 +734,11 @@ function PackagesTab({ services, addOns, onCreateService, onUpdateService, onDel
 
             {subTab === 'services' && (
                 <Card>
-                    <CardHeader><div className="flex items-center justify-between"><CardTitle>Packages / Services</CardTitle><Button onClick={openCreateService}><Plus className="w-4 h-4 mr-2" />Add Package</Button></div></CardHeader>
+                    <CardHeader><div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><CardTitle>Packages / Services</CardTitle><Button onClick={openCreateService}><Plus className="w-4 h-4 mr-2" />Add Package</Button></div></CardHeader>
                     <CardContent>
                         <div className="space-y-3">
                             {services.map(s => (
-                                <div key={s.id} className="flex items-center justify-between p-4 border border-border rounded-lg hover:shadow-sm transition-shadow">
+                                <div key={s.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border rounded-lg hover:shadow-sm transition-shadow gap-4">
                                     <div className="flex items-center gap-4">
                                         {s.image && <img src={s.image} alt={s.name} className="w-16 h-12 object-cover rounded" />}
                                         <div>
@@ -751,7 +746,7 @@ function PackagesTab({ services, addOns, onCreateService, onUpdateService, onDel
                                             <p className="text-sm text-muted-foreground">{s.category} • {s.duration}min • {formatPrice(s.basePrice)}</p>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant={s.isActive ? 'default' : 'secondary'}>{s.isActive ? 'Active' : 'Inactive'}</Badge>
                                         <Button variant="ghost" size="icon" onClick={() => openEditService(s)}><Edit className="w-4 h-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => onDeleteService(s.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
@@ -820,13 +815,13 @@ function PackagesTab({ services, addOns, onCreateService, onUpdateService, onDel
 
             {subTab === 'addons' && (
                 <Card>
-                    <CardHeader><div className="flex items-center justify-between"><CardTitle>Add-Ons</CardTitle><Button onClick={openCreateAddon}><Plus className="w-4 h-4 mr-2" />Add Add-On</Button></div></CardHeader>
+                    <CardHeader><div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><CardTitle>Add-Ons</CardTitle><Button onClick={openCreateAddon}><Plus className="w-4 h-4 mr-2" />Add Add-On</Button></div></CardHeader>
                     <CardContent>
                         <div className="space-y-3">
                             {addOns.map(a => (
-                                <div key={a.id} className="flex items-center justify-between p-4 border border-border rounded-lg hover:shadow-sm transition-shadow">
+                                <div key={a.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 border border-border rounded-lg hover:shadow-sm transition-shadow gap-4">
                                     <div><p className="font-medium">{a.name}</p><p className="text-sm text-muted-foreground">{a.description} • {formatPrice(a.price)}</p></div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
                                         <Badge variant={a.isActive ? 'default' : 'secondary'}>{a.isActive ? 'Active' : 'Inactive'}</Badge>
                                         <Button variant="ghost" size="icon" onClick={() => openEditAddon(a)}><Edit className="w-4 h-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => onDeleteAddOn(a.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
@@ -885,7 +880,7 @@ function MessagesTab({ messages, onMarkRead, onMarkUnread, onDelete }: {
             <CardContent>
                 <div className="space-y-2">
                     {messages.map(msg => (
-                        <div key={msg.id} className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:shadow-sm transition-shadow ${!msg.isRead ? 'border-blue-300 bg-blue-50/5' : 'border-border'}`} onClick={() => handleOpen(msg)}>
+                        <div key={msg.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-lg cursor-pointer hover:shadow-sm transition-shadow gap-4 ${!msg.isRead ? 'border-blue-300 bg-blue-50/5' : 'border-border'}`} onClick={() => handleOpen(msg)}>
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                                 {!msg.isRead ? <Mail className="w-5 h-5 text-blue-500 flex-shrink-0" /> : <MailOpen className="w-5 h-5 text-gray-400 flex-shrink-0" />}
                                 <div className="min-w-0">
@@ -945,6 +940,20 @@ function TestimonialsTab({ testimonials, onUpdate, onDelete }: {
     const approved = testimonials.filter(t => t.status === 'approved' || !t.status); // Handle legacy
     const rejected = testimonials.filter(t => t.status === 'rejected');
 
+    const [editTestimonial, setEditTestimonial] = useState<Testimonial | null>(null);
+    const [editForm, setEditForm] = useState({ name: '', role: '', company: '', content: '', rating: 5 });
+
+    const openEdit = (t: Testimonial) => {
+        setEditForm({ name: t.name, role: t.role || '', company: t.company || '', content: t.content, rating: t.rating || 5 });
+        setEditTestimonial(t);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editTestimonial) return;
+        await onUpdate(editTestimonial.id, editForm);
+        setEditTestimonial(null);
+    };
+
     return (
         <div className="space-y-8">
             {/* Pending Requests */}
@@ -959,7 +968,7 @@ function TestimonialsTab({ testimonials, onUpdate, onDelete }: {
                     <CardContent>
                         <div className="space-y-4">
                             {pending.map(t => (
-                                <TestimonialCard key={t.id} testimonial={t} onUpdate={onUpdate} onDelete={onDelete} isPending />
+                                <TestimonialCard key={t.id} testimonial={t} onUpdate={onUpdate} onDelete={onDelete} onEdit={() => openEdit(t)} isPending />
                             ))}
                         </div>
                     </CardContent>
@@ -975,7 +984,7 @@ function TestimonialsTab({ testimonials, onUpdate, onDelete }: {
                 <CardContent>
                     <div className="space-y-4">
                         {approved.map(t => (
-                            <TestimonialCard key={t.id} testimonial={t} onUpdate={onUpdate} onDelete={onDelete} />
+                            <TestimonialCard key={t.id} testimonial={t} onUpdate={onUpdate} onDelete={onDelete} onEdit={() => openEdit(t)} />
                         ))}
                         {approved.length === 0 && <p className="text-center py-8 text-muted-foreground">No approved testimonials.</p>}
                     </div>
@@ -989,17 +998,30 @@ function TestimonialsTab({ testimonials, onUpdate, onDelete }: {
                     <CardContent>
                         <div className="space-y-4">
                             {rejected.map(t => (
-                                <TestimonialCard key={t.id} testimonial={t} onUpdate={onUpdate} onDelete={onDelete} isRejected />
+                                <TestimonialCard key={t.id} testimonial={t} onUpdate={onUpdate} onDelete={onDelete} onEdit={() => openEdit(t)} isRejected />
                             ))}
                         </div>
                     </CardContent>
                 </Card>
             )}
+
+            <Modal open={!!editTestimonial} onClose={() => setEditTestimonial(null)} title="Edit Testimonial">
+                <div className="space-y-4">
+                    <div><Label>Name</Label><Input value={editForm.name} onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))} /></div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><Label>Role</Label><Input value={editForm.role} onChange={e => setEditForm(prev => ({ ...prev, role: e.target.value }))} /></div>
+                        <div><Label>Company</Label><Input value={editForm.company} onChange={e => setEditForm(prev => ({ ...prev, company: e.target.value }))} /></div>
+                    </div>
+                    <div><Label>Rating</Label><Input type="number" min="1" max="5" value={editForm.rating} onChange={e => setEditForm(prev => ({ ...prev, rating: Number(e.target.value) }))} /></div>
+                    <div><Label>Content</Label><Textarea value={editForm.content} onChange={e => setEditForm(prev => ({ ...prev, content: e.target.value }))} rows={4} /></div>
+                    <Button className="w-full btn-gold text-white" onClick={handleSaveEdit}>Save Changes</Button>
+                </div>
+            </Modal>
         </div>
     );
 }
 
-function TestimonialCard({ testimonial, onUpdate, onDelete, isPending, isRejected }: { testimonial: Testimonial, onUpdate: any, onDelete: any, isPending?: boolean, isRejected?: boolean }) {
+function TestimonialCard({ testimonial, onUpdate, onDelete, onEdit, isPending, isRejected }: { testimonial: Testimonial, onUpdate: any, onDelete: any, onEdit: () => void, isPending?: boolean, isRejected?: boolean }) {
     return (
         <div className="flex gap-4 p-4 border rounded-lg bg-card hover:shadow-sm transition-shadow">
             <Avatar>
@@ -1036,6 +1058,9 @@ function TestimonialCard({ testimonial, onUpdate, onDelete, isPending, isRejecte
                     {isRejected && (
                         <Button size="sm" variant="outline" onClick={() => onUpdate(testimonial.id, { status: 'approved' })}>Approve</Button>
                     )}
+                    <Button size="sm" variant="outline" onClick={onEdit}>
+                        <Edit className="w-4 h-4 mr-2" /> Edit
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => onDelete(testimonial.id)} className="text-red-500 ml-auto">
                         <Trash2 className="w-4 h-4 mr-2" /> Delete
                     </Button>

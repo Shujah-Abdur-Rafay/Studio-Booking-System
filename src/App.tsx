@@ -111,8 +111,8 @@ function Navigation({ currentView, setView }: { currentView: View; setView: (v: 
             className="flex items-center"
           >
             <img
-              src="/logo-color.png"
-              alt="RealLuxe Media"
+              src="/logo-color.svg"
+              alt="Real Luxe Studios"
               className="h-10 w-auto"
             />
           </button>
@@ -966,6 +966,11 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
     }
   }, [user]);
 
+  // Scroll to top on step change or completion
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step, isComplete]);
+
 
 
   const { showToast, services, addOns } = useStore();
@@ -1510,58 +1515,66 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
                     onChange={() => setPaymentMethod('stripe')}
                     className="w-5 h-5 text-[#8f5e25] focus:ring-[#cbb26a]"
                   />
-                  <CreditCard className="w-6 h-6" />
+                  <div className="flex items-center justify-center w-8">
+                    <svg viewBox="0 0 24 24" className="w-8 h-8 rounded-md" aria-label="Stripe">
+                      <rect width="24" height="24" fill="#635bff" />
+                      <polygon points="5.5,16.5 5.5,9.5 18.5,6 18.5,13" fill="#ffffff" />
+                    </svg>
+                  </div>
                   <div className="flex-1">
-                    <p className="font-medium">Credit Card</p>
+                    <p className="font-medium">Stripe / Credit Card</p>
                     <p className="text-sm text-muted-foreground">Visa, Mastercard, Amex</p>
                   </div>
                 </label>
 
-                <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'paypal' ? 'border-[#cbb26a] bg-[#cbb26a]/20/30' : 'hover:border-[#dbc88a]'
-                  }`}>
+                <label className="flex items-center gap-4 p-4 border rounded-lg cursor-not-allowed transition-colors opacity-60 bg-muted/50">
                   <input
                     type="radio"
                     name="payment"
-                    checked={paymentMethod === 'paypal'}
-                    onChange={() => setPaymentMethod('paypal')}
-                    className="w-5 h-5 text-[#8f5e25] focus:ring-[#cbb26a]"
+                    disabled
+                    className="w-5 h-5 text-muted-foreground"
                   />
                   <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white text-xs font-bold">P</div>
-                  <div className="flex-1">
-                    <p className="font-medium">PayPal</p>
-                    <p className="text-sm text-muted-foreground">Pay with your PayPal account</p>
+                  <div className="flex-1 flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-muted-foreground">PayPal</p>
+                      <p className="text-sm text-muted-foreground">Pay with your PayPal account</p>
+                    </div>
+                    <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-red-500/20">Unavailable</Badge>
                   </div>
                 </label>
 
-                <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'venmo' ? 'border-[#cbb26a] bg-[#cbb26a]/20/30' : 'hover:border-[#dbc88a]'
-                  }`}>
+                <label className="flex items-center gap-4 p-4 border rounded-lg cursor-not-allowed transition-colors opacity-60 bg-muted/50">
                   <input
                     type="radio"
                     name="payment"
-                    checked={paymentMethod === 'venmo'}
-                    onChange={() => setPaymentMethod('venmo')}
-                    className="w-5 h-5 text-[#8f5e25] focus:ring-[#cbb26a]"
+                    disabled
+                    className="w-5 h-5 text-muted-foreground"
                   />
                   <div className="w-6 h-6 bg-blue-400 rounded-full flex items-center justify-center text-white text-xs font-bold">V</div>
-                  <div className="flex-1">
-                    <p className="font-medium">Venmo</p>
-                    <p className="text-sm text-muted-foreground">Pay @studiophoto - booking held 30 min</p>
+                  <div className="flex-1 flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-muted-foreground">Venmo</p>
+                      <p className="text-sm text-muted-foreground">Pay @studiophoto - booking held 30 min</p>
+                    </div>
+                    <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-red-500/20">Unavailable</Badge>
                   </div>
                 </label>
 
-                <label className={`flex items-center gap-4 p-4 border rounded-lg cursor-pointer transition-colors ${paymentMethod === 'zelle' ? 'border-[#cbb26a] bg-[#cbb26a]/20/30' : 'hover:border-[#dbc88a]'
-                  }`}>
+                <label className="flex items-center gap-4 p-4 border rounded-lg cursor-not-allowed transition-colors opacity-60 bg-muted/50">
                   <input
                     type="radio"
                     name="payment"
-                    checked={paymentMethod === 'zelle'}
-                    onChange={() => setPaymentMethod('zelle')}
-                    className="w-5 h-5 text-[#8f5e25] focus:ring-[#cbb26a]"
+                    disabled
+                    className="w-5 h-5 text-muted-foreground"
                   />
                   <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">Z</div>
-                  <div className="flex-1">
-                    <p className="font-medium">Zelle</p>
-                    <p className="text-sm text-muted-foreground">Pay studio@email.com - booking held 30 min</p>
+                  <div className="flex-1 flex justify-between items-center">
+                    <div>
+                      <p className="font-medium text-muted-foreground">Zelle</p>
+                      <p className="text-sm text-muted-foreground">Pay studio@email.com - booking held 30 min</p>
+                    </div>
+                    <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-red-500/20">Unavailable</Badge>
                   </div>
                 </label>
               </div>
@@ -2104,7 +2117,7 @@ function Footer({ setView }: { setView: (v: View) => void }) {
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           <div>
             <div className="flex items-center gap-2 font-bold text-xl mb-4 text-[#cbb26a]">
-              <img src="/logo-white.png" alt="RealLuxe Logo" className="w-8 h-8" />
+              <img src="/logo-white.svg" alt="Real Luxe Studios Logo" className="w-8 h-8" />
               <span>RealLuxe Media</span>
             </div>
             <p className="text-gray-400 text-sm">
