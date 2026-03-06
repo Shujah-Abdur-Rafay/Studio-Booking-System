@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
-import { functions } from "@/lib/firebase"; // Ensure firebase.ts exports functions
+import { functions } from "@/lib/firebase";
 import { httpsCallable } from "firebase/functions";
 import { AlertCircle, Loader2 } from "lucide-react";
 import { formatPrice } from "@/data/mockData";
@@ -14,6 +14,9 @@ interface PaymentFormProps {
     amount: number;
     email?: string;
     invoiceId?: string;
+    bookingId?: string;
+    clientId?: string;
+    paymentOption?: 'deposit' | 'full';
     onSuccess: () => void;
 }
 
@@ -33,9 +36,7 @@ function CheckoutForm({ amount, onSuccess }: PaymentFormProps) {
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
 
-        if (!stripe || !elements) {
-            return;
-        }
+        if (!stripe || !elements) return;
 
         setProcessing(true);
         setError(null);
@@ -51,14 +52,12 @@ function CheckoutForm({ amount, onSuccess }: PaymentFormProps) {
         }
 
         try {
-            // Confirm payment using the client secret from Elements provider
-            // Note: We don't need to pass clientSecret to confirmPayment if we used Elements with clientSecret
             const { error: confirmError } = await stripe.confirmPayment({
                 elements,
                 confirmParams: {
-                    return_url: window.location.origin, // You might want a specific success page or handle it inline
+                    return_url: window.location.origin,
                 },
-                redirect: "if_required", // Handle success without redirect if possible
+                redirect: "if_required",
             });
 
             if (!mounted.current) return;
@@ -66,7 +65,6 @@ function CheckoutForm({ amount, onSuccess }: PaymentFormProps) {
             if (confirmError) {
                 setError(confirmError.message || "Payment failed");
             } else {
-                // Success
                 onSuccess();
             }
         } catch (err: any) {
@@ -108,17 +106,33 @@ function CheckoutForm({ amount, onSuccess }: PaymentFormProps) {
     );
 }
 
-export function PaymentForm({ amount, email, invoiceId, onSuccess }: PaymentFormProps) {
+export function PaymentForm({
+    amount,
+    email,
+    invoiceId,
+    bookingId,
+    clientId,
+    paymentOption = 'full',
+    onSuccess,
+}: PaymentFormProps) {
     const [clientSecret, setClientSecret] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         let isMounted = true;
-        // Create PaymentIntent as soon as the component loads
+
         const createIntent = async () => {
             try {
                 const createPaymentIntentFunc = httpsCallable(functions, 'createPaymentIntent');
-                const result = await createPaymentIntentFunc({ amount, currency: 'usd', invoiceId, email });
+                const result = await createPaymentIntentFunc({
+                    amount,
+                    currency: 'usd',
+                    invoiceId: invoiceId || '',
+                    bookingId: bookingId || '',
+                    clientId: clientId || '',
+                    paymentOption: paymentOption,
+                    email,
+                });
 
                 if (!isMounted) return;
 
@@ -126,7 +140,6 @@ export function PaymentForm({ amount, email, invoiceId, onSuccess }: PaymentForm
                 if (data?.clientSecret) {
                     setClientSecret(data.clientSecret);
                 } else {
-                    console.error("No clientSecret returned from createPaymentIntent");
                     setError("Payment initialization failed: No client secret returned.");
                 }
             } catch (err: any) {
@@ -138,10 +151,8 @@ export function PaymentForm({ amount, email, invoiceId, onSuccess }: PaymentForm
 
         createIntent();
 
-        return () => {
-            isMounted = false;
-        };
-    }, [amount, email]);
+        return () => { isMounted = false; };
+    }, [amount, email, invoiceId, bookingId, clientId, paymentOption]);
 
     if (error) {
         return (

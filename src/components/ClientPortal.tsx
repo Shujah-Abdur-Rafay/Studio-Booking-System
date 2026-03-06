@@ -229,6 +229,8 @@ export function ClientPortal({ setView }: { setView: (v: View) => void }) {
                                     amount={payInvoice.balanceDue}
                                     email={user?.email}
                                     invoiceId={payInvoice.id}
+                                    clientId={payInvoice.clientId}
+                                    paymentOption="full"
                                     onSuccess={() => {
                                         // RELY ON WEBHOOK: Do not update status here.
                                         // Just close the modal and show a success message.

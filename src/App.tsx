@@ -929,6 +929,9 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [formData, setFormData] = useState({ firstName: '', lastName: '', email: '', phone: '', address: '', notes: '' });
+  // Holds the Firestore booking ID created before payment is initiated
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
+  const [pendingClientId, setPendingClientId] = useState<string | null>(null);
   const { user } = useAuth();
   const [existingBookings, setExistingBookings] = useState<Booking[]>([]);
 
@@ -1018,12 +1021,14 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
     return subtotal;
   };
 
-  const handleComplete = async () => {
-    if (!selectedService || !selectedDate || !selectedTimeSlot) return;
+  // ─── Create Booking BEFORE payment (fixes race condition) ───────────────────
+  // Called when user reaches Step 4 (Payment). Creates a pending_payment booking
+  // in Firestore first so the webhook has a real bookingId to confirm.
+  const ensureBookingCreated = async (): Promise<{ bookingId: string; clientId: string } | null> => {
+    if (pendingBookingId) return { bookingId: pendingBookingId, clientId: pendingClientId || '' };
+    if (!selectedService || !selectedDate || !selectedTimeSlot) return null;
 
-    setIsProcessing(true);
     try {
-      // Create booking record
       const subtotal = calculateTotal();
       const total = paymentOption === 'full'
         ? subtotal * (1 - FULL_PAYMENT_DISCOUNT)
@@ -1032,13 +1037,21 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
         ? (subtotal * (selectedService.depositRequired || 0)) / 100
         : 0;
 
-      await bookingsService.create({
-        clientId: user?.id || 'guest',
+      // Lookup client record for this user
+      let resolvedClientId = '';
+      if (user?.id) {
+        const { clientsService } = await import('@/lib/firebaseService');
+        const client = await clientsService.getByUserId(user.id);
+        resolvedClientId = client?.id || '';
+      }
+
+      const bookingId = await bookingsService.create({
+        clientId: resolvedClientId || user?.id || 'guest',
         clientName: `${formData.firstName} ${formData.lastName}`,
         clientEmail: formData.email,
         serviceId: selectedService.id,
         serviceName: selectedService.name,
-        addons: selectedAddOns.map(a => ({
+        addons: selectedAddOns.map((a: AddOn) => ({
           addonId: a.id,
           name: a.name,
           price: a.price
@@ -1054,21 +1067,35 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
         },
         pricing: {
           subtotal: selectedService.basePrice,
-          travelFee: 0, // Calculate based on address if needed
+          travelFee: 0,
           total: total,
           depositAmount: depositAmount
         },
         payment: {
-          status: paymentOption === 'full' ? 'paid_in_full' : 'deposit_paid', // Simplified for demo
+          status: 'pending',
           method: paymentMethod as any,
-          paidAt: new Date()
         },
-        status: 'pending', // Pending admin approval
+        status: 'pending_payment', // Will be updated to 'confirmed' by webhook
         notes: formData.notes
-      } as any); // Cast to any to bypass strict type check for now if needed
+      } as any);
 
+      setPendingBookingId(bookingId);
+      setPendingClientId(resolvedClientId);
+      return { bookingId, clientId: resolvedClientId };
+    } catch (err) {
+      console.error('Failed to pre-create booking:', err);
+      return null;
+    }
+  };
+
+  // Called by non-Stripe payment paths
+  const handleComplete = async () => {
+    if (!selectedService || !selectedDate || !selectedTimeSlot) return;
+    setIsProcessing(true);
+    try {
+      await ensureBookingCreated();
       setIsComplete(true);
-      showToast('Booking confirmed! You can view it in your portal.', 'success');
+      showToast('Booking submitted! You can view it in your portal.', 'success');
     } catch (error) {
       console.error('Booking failed:', error);
       showToast('Failed to create booking. Please contact support.', 'error');
@@ -1417,7 +1444,11 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
               <Button variant="outline" onClick={() => setStep(2)}>
                 Back
               </Button>
-              <Button onClick={() => setStep(4)} className="btn-gold text-white font-medium">
+              <Button onClick={async () => {
+                // Pre-create the booking now so PaymentForm has a real bookingId
+                await ensureBookingCreated();
+                setStep(4);
+              }} className="btn-gold text-white font-medium">
                 Continue
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
@@ -1590,7 +1621,16 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
                     : calculateFinalAmount()
                   }
                   email={formData.email}
-                  onSuccess={handleComplete}
+                  invoiceId={undefined}
+                  bookingId={pendingBookingId || undefined}
+                  clientId={pendingClientId || undefined}
+                  paymentOption={paymentOption}
+                  onSuccess={async () => {
+                    // Ensure booking is created before Stripe confirms (race-condition guard)
+                    if (!pendingBookingId) await ensureBookingCreated();
+                    setIsComplete(true);
+                    showToast('Payment successful! Booking confirmed.', 'success');
+                  }}
                 />
                 <div className="mt-4">
                   <Button variant="outline" onClick={() => setStep(3)}>
