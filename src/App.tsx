@@ -422,16 +422,36 @@ function HomeSection({ setView }: { setView: (v: View) => void }) {
             {portfolioItems.filter((p: PortfolioItem) => p.featured).slice(0, 4).map((item: PortfolioItem) => (
               <div
                 key={item.id}
-                className="group relative aspect-square overflow-hidden rounded-lg cursor-pointer"
+                className="group relative aspect-square overflow-hidden rounded-lg cursor-pointer bg-black/5"
                 onClick={() => setView('portfolio')}
+                onMouseEnter={e => {
+                  const vid = e.currentTarget.querySelector('video');
+                  if (vid) vid.play().catch(() => { });
+                }}
+                onMouseLeave={e => {
+                  const vid = e.currentTarget.querySelector('video');
+                  if (vid) vid.pause();
+                }}
               >
-                <img
-                  src={item.thumbnail}
-                  alt={item.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
-                <div className="absolute inset-0 flex items-end p-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                {item.videoUrl ? (
+                  <video
+                    src={item.videoUrl}
+                    poster={item.thumbnail || item.image}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loop
+                    playsInline
+                    muted
+                    preload="metadata"
+                  />
+                ) : (
+                  <img
+                    src={item.thumbnail || item.image}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                )}
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors pointer-events-none" />
+                <div className="absolute inset-0 flex items-end p-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                   <div className="text-white">
                     <p className="font-medium">{item.title}</p>
                     <p className="text-sm text-white/80">{item.client}</p>
