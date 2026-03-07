@@ -725,13 +725,18 @@ function PackagesTab({ services, addOns, onCreateService, onUpdateService, onDel
 
     const openCreateService = () => { setServiceForm(emptyServiceForm); setDeliverablesText(''); setEditService(null); setShowServiceForm(true); };
     const openEditService = (s: Service) => {
-        setServiceForm({ name: s.name, slug: s.slug, category: s.category, description: s.description, duration: s.duration, basePrice: s.basePrice, depositRequired: s.depositRequired, deliverables: s.deliverables, addons: s.addons, bufferTime: s.bufferTime, minNotice: s.minNotice, maxAdvance: s.maxAdvance, isActive: s.isActive, image: s.image || '', sortOrder: s.sortOrder, pricingTiers: s.pricingTiers || {} });
+        setServiceForm({ name: s.name, slug: s.slug, category: s.category, description: s.description, duration: s.duration, basePrice: s.basePrice / 100, depositRequired: s.depositRequired, deliverables: s.deliverables, addons: s.addons, bufferTime: s.bufferTime, minNotice: s.minNotice, maxAdvance: s.maxAdvance, isActive: s.isActive, image: s.image || '', sortOrder: s.sortOrder, pricingTiers: s.pricingTiers ? Object.fromEntries(Object.entries(s.pricingTiers).map(([k, v]) => [k, v / 100])) : {} });
         setDeliverablesText(s.deliverables.join('\n'));
         setEditService(s); setShowServiceForm(true);
     };
     const handleSaveService = async () => {
         if (!serviceForm.name) { alert('Name is required'); return; }
-        const data = { ...serviceForm, deliverables: deliverablesText.split('\n').filter(Boolean) };
+        const data = {
+            ...serviceForm,
+            basePrice: Math.round(serviceForm.basePrice * 100),
+            pricingTiers: serviceForm.pricingTiers ? Object.fromEntries(Object.entries(serviceForm.pricingTiers).map(([k, v]) => [k, Math.round(v * 100)])) : {},
+            deliverables: deliverablesText.split('\n').filter(Boolean)
+        };
         if (editService) await onUpdateService(editService.id, data);
         else await onCreateService(data);
         setShowServiceForm(false);
@@ -739,13 +744,14 @@ function PackagesTab({ services, addOns, onCreateService, onUpdateService, onDel
 
     const openCreateAddon = () => { setAddonForm(emptyAddonForm); setEditAddon(null); setShowAddonForm(true); };
     const openEditAddon = (a: AddOn) => {
-        setAddonForm({ name: a.name, description: a.description, price: a.price, priceType: a.priceType, applicableServices: a.applicableServices, isActive: a.isActive });
+        setAddonForm({ name: a.name, description: a.description, price: a.price / 100, priceType: a.priceType, applicableServices: a.applicableServices, isActive: a.isActive });
         setEditAddon(a); setShowAddonForm(true);
     };
     const handleSaveAddon = async () => {
         if (!addonForm.name) { alert('Name is required'); return; }
-        if (editAddon) await onUpdateAddOn(editAddon.id, addonForm);
-        else await onCreateAddOn(addonForm);
+        const data = { ...addonForm, price: Math.round(addonForm.price * 100) };
+        if (editAddon) await onUpdateAddOn(editAddon.id, data);
+        else await onCreateAddOn(data);
         setShowAddonForm(false);
     };
 
@@ -791,7 +797,7 @@ function PackagesTab({ services, addOns, onCreateService, onUpdateService, onDel
                             </div>
                             <div><Label>Description</Label><Textarea value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} rows={3} /></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><Label>Base Price (cents)</Label><Input type="number" value={serviceForm.basePrice} onChange={e => setServiceForm({ ...serviceForm, basePrice: Number(e.target.value) })} /></div>
+                                <div><Label>Base Price ($)</Label><Input type="number" step="0.01" value={serviceForm.basePrice} onChange={e => setServiceForm({ ...serviceForm, basePrice: Number(e.target.value) })} /></div>
                                 <div><Label>Duration (min)</Label><Input type="number" value={serviceForm.duration} onChange={e => setServiceForm({ ...serviceForm, duration: Number(e.target.value) })} /></div>
                             </div>
 
@@ -860,7 +866,7 @@ function PackagesTab({ services, addOns, onCreateService, onUpdateService, onDel
                             <div><Label>Name *</Label><Input value={addonForm.name} onChange={e => setAddonForm({ ...addonForm, name: e.target.value })} /></div>
                             <div><Label>Description</Label><Textarea value={addonForm.description} onChange={e => setAddonForm({ ...addonForm, description: e.target.value })} rows={2} /></div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div><Label>Price (cents)</Label><Input type="number" value={addonForm.price} onChange={e => setAddonForm({ ...addonForm, price: Number(e.target.value) })} /></div>
+                                <div><Label>Price ($)</Label><Input type="number" step="0.01" value={addonForm.price} onChange={e => setAddonForm({ ...addonForm, price: Number(e.target.value) })} /></div>
                                 <div><Label>Price Type</Label>
                                     <select className="w-full border rounded-md px-3 py-2 bg-background" value={addonForm.priceType} onChange={e => setAddonForm({ ...addonForm, priceType: e.target.value as AddOn['priceType'] })}>
                                         <option value="fixed">Fixed</option><option value="percentage">Percentage</option><option value="per-photo">Per Photo</option>
