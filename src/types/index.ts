@@ -63,7 +63,7 @@ export interface AddOn {
 // Booking Types
 export type BookingStatus = 'pending_payment' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
 export type PaymentStatus = 'pending' | 'deposit_paid' | 'paid_in_full' | 'refunded' | 'failed';
-export type PaymentMethod = 'stripe' | 'paypal' | 'venmo' | 'zelle' | 'manual';
+export type PaymentMethod = 'stripe' | 'manual';
 
 export interface Booking {
   id: string;

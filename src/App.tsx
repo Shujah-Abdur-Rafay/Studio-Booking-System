@@ -974,7 +974,7 @@ function ServicesSection({ setView }: { setView: (v: View) => void }) {
 // Booking Section - Multi-step booking flow
 function BookingSection({ setView }: { setView: (v: View) => void }) {
   const [step, setStep] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal' | 'venmo' | 'zelle'>('stripe');
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'manual'>('stripe');
   const [paymentOption, setPaymentOption] = useState<'full' | 'deposit'>('deposit');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
@@ -1335,7 +1335,8 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
                   const date = new Date();
                   date.setDate(date.getDate() + i + 1);
                   const isSelected = selectedDate?.toDateString() === date.toDateString();
-                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                  // const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                  const isWeekend = false;
 
                   return (
                     <button
@@ -1609,56 +1610,6 @@ function BookingSection({ setView }: { setView: (v: View) => void }) {
                   </div>
                 </label>
 
-                <label className="flex items-center gap-4 p-4 border rounded-lg cursor-not-allowed transition-colors opacity-60 bg-muted/50">
-                  <input
-                    type="radio"
-                    name="payment"
-                    disabled
-                    className="w-5 h-5 text-muted-foreground"
-                  />
-                  <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white text-xs font-bold">P</div>
-                  <div className="flex-1 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-muted-foreground">PayPal</p>
-                      <p className="text-sm text-muted-foreground">Pay with your PayPal account</p>
-                    </div>
-                    <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-red-500/20">Unavailable</Badge>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-4 p-4 border rounded-lg cursor-not-allowed transition-colors opacity-60 bg-muted/50">
-                  <input
-                    type="radio"
-                    name="payment"
-                    disabled
-                    className="w-5 h-5 text-muted-foreground"
-                  />
-                  <div className="w-6 h-6 bg-blue-400 rounded-full flex items-center justify-center text-white text-xs font-bold">V</div>
-                  <div className="flex-1 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-muted-foreground">Venmo</p>
-                      <p className="text-sm text-muted-foreground">Pay @studiophoto - booking held 30 min</p>
-                    </div>
-                    <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-red-500/20">Unavailable</Badge>
-                  </div>
-                </label>
-
-                <label className="flex items-center gap-4 p-4 border rounded-lg cursor-not-allowed transition-colors opacity-60 bg-muted/50">
-                  <input
-                    type="radio"
-                    name="payment"
-                    disabled
-                    className="w-5 h-5 text-muted-foreground"
-                  />
-                  <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">Z</div>
-                  <div className="flex-1 flex justify-between items-center">
-                    <div>
-                      <p className="font-medium text-muted-foreground">Zelle</p>
-                      <p className="text-sm text-muted-foreground">Pay studio@email.com - booking held 30 min</p>
-                    </div>
-                    <Badge variant="secondary" className="bg-red-500/10 text-red-500 border-red-500/20">Unavailable</Badge>
-                  </div>
-                </label>
               </div>
             </div>
 
@@ -2267,7 +2218,51 @@ function Footer({ setView }: { setView: (v: View) => void }) {
 
 // Main App Component
 function App() {
-  const [currentView, setCurrentView] = useState<View>('home');
+  const [currentView, _setCurrentView] = useState<View>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return (params.get('view') as View) || 'home';
+    }
+    return 'home';
+  });
+
+  const setCurrentView = (view: View | ((prev: View) => View)) => {
+    if (typeof view === 'function') {
+      _setCurrentView((prev) => {
+        const nextView = view(prev);
+        if (typeof window !== 'undefined') {
+          window.history.pushState({ view: nextView }, '', `?view=${nextView}`);
+        }
+        return nextView;
+      });
+    } else {
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ view }, '', `?view=${view}`);
+      }
+      _setCurrentView(view);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state && event.state.view) {
+        _setCurrentView(event.state.view);
+      } else {
+        const params = new URLSearchParams(window.location.search);
+        _setCurrentView((params.get('view') as View) || 'home');
+      }
+    };
+
+    if (typeof window !== 'undefined' && !window.history.state) {
+      window.history.replaceState({ view: currentView }, '', `?view=${currentView}`);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handlePopState);
+      return () => window.removeEventListener('popstate', handlePopState);
+    }
+  }, []);
+
   const { setUser, loadPublicData, loadAdminData, dataLoaded, authLoading } = useStore();
 
   // Firebase auth listener — runs once on mount
